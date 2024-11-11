@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dill's 3D Cube Benchmark</title>
+    <title>Dill's 3D Shape Benchmark</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -55,13 +55,13 @@
 </head>
 <body>
 
-<h1>Dill's 3D Cube Benchmark</h1>
+<h1>Dill's 3D Shape Benchmark</h1>
 <h3>Benchmark completes when avg FPS drops below 15.</h3>
 <canvas id="gpuCanvas" width="600" height="400"></canvas>
 <div id="score">Score: N/A</div>
 <div id="fps">FPS: N/A</div>
 <div id="space">⠀</div>
-<div id="version">Version: 1.0.0</div>
+<div id="version">Version: 1.0.1</div>
 <div id="space">⠀</div>
 <button id="startButton" onclick="startBenchmark()">Start Benchmark</button>
 
@@ -71,139 +71,163 @@
     let score = 0, frameCount = 0, fpsSum = 0, warmUpFrames = 60;
     const cubesPerBatch = 20;
 
-    class WebGLRenderer {
-        async init(canvas) {
-            this.gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-            if (!this.gl) {
-                throw new Error("WebGL is not supported");
-            }
+	class WebGLRenderer {
+		async init(canvas) {
+			this.gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+			if (!this.gl) {
+				throw new Error("WebGL is not supported");
+			}
 
-            this.gl.enable(this.gl.DEPTH_TEST);
-            this.gl.enable(this.gl.CULL_FACE);
-            this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
+			// Disable face culling to render both sides of each cube
+			this.gl.disable(this.gl.CULL_FACE);
 
-            await this.createProgram();
-            return true;
-        }
+			this.gl.enable(this.gl.DEPTH_TEST);
+			this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
-        async createProgram() {
-            const vertexShaderSource = `
-                attribute vec4 aPosition;
-                uniform mat4 uModelViewProjectionMatrix;
-                uniform vec4 uColor;
-                varying lowp vec4 vColor;
-                void main() {
-                    gl_Position = uModelViewProjectionMatrix * aPosition;
-                    vColor = uColor;
-                }
-            `;
+			await this.createProgram();
+			return true;
+		}
 
-            const fragmentShaderSource = `
-                varying lowp vec4 vColor;
-                void main() {
-                    gl_FragColor = vColor;
-                }
-            `;
+		async createProgram() {
+			const vertexShaderSource = `
+				attribute vec4 aPosition;
+				uniform mat4 uModelViewProjectionMatrix;
+				uniform vec4 uColor;
+				varying lowp vec4 vColor;
+				void main() {
+					gl_Position = uModelViewProjectionMatrix * aPosition;
+					vColor = uColor;
+				}
+			`;
 
-            const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, vertexShaderSource);
-            const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, fragmentShaderSource);
+			const fragmentShaderSource = `
+				varying lowp vec4 vColor;
+				void main() {
+					gl_FragColor = vColor;
+				}
+			`;
 
-            this.program = this.gl.createProgram();
-            this.gl.attachShader(this.program, vertexShader);
-            this.gl.attachShader(this.program, fragmentShader);
-            this.gl.linkProgram(this.program);
+			const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, vertexShaderSource);
+			const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, fragmentShaderSource);
 
-            if (!this.gl.getProgramParameter(this.program, this.gl.LINK_STATUS)) {
-                throw new Error("Unable to initialize the shader program");
-            }
+			this.program = this.gl.createProgram();
+			this.gl.attachShader(this.program, vertexShader);
+			this.gl.attachShader(this.program, fragmentShader);
+			this.gl.linkProgram(this.program);
 
-            this.gl.useProgram(this.program);
+			if (!this.gl.getProgramParameter(this.program, this.gl.LINK_STATUS)) {
+				throw new Error("Unable to initialize the shader program");
+			}
 
-            // Get uniform locations
-            this.uniformLocations = {
-                modelViewProjectionMatrix: this.gl.getUniformLocation(this.program, "uModelViewProjectionMatrix"),
-                color: this.gl.getUniformLocation(this.program, "uColor")
-            };
+			this.gl.useProgram(this.program);
 
-            // Get attribute locations
-            this.attributeLocations = {
-                position: this.gl.getAttribLocation(this.program, "aPosition")
-            };
-        }
+			// Get uniform locations
+			this.uniformLocations = {
+				modelViewProjectionMatrix: this.gl.getUniformLocation(this.program, "uModelViewProjectionMatrix"),
+				color: this.gl.getUniformLocation(this.program, "uColor")
+			};
 
-        compileShader(type, source) {
-            const shader = this.gl.createShader(type);
-            this.gl.shaderSource(shader, source);
-            this.gl.compileShader(shader);
+			// Get attribute locations
+			this.attributeLocations = {
+				position: this.gl.getAttribLocation(this.program, "aPosition")
+			};
+		}
 
-            if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
-                console.error("Error compiling shader:", this.gl.getShaderInfoLog(shader));
-                this.gl.deleteShader(shader);
-                return null;
-            }
-            return shader;
-        }
+		compileShader(type, source) {
+			const shader = this.gl.createShader(type);
+			this.gl.shaderSource(shader, source);
+			this.gl.compileShader(shader);
 
-        createCube() {
-            const vertices = new Float32Array([
-                // Front face
-                -1, -1,  1,  1,  1,  1,  -1,  1,  1,
-                -1, -1, -1,  -1,  1, -1,   1,  1, -1,
-                -1,  1,  1,  -1,  1, -1,   1,  1,  1,
-                1,  1, -1,   1, -1,  1,   1, -1, -1,
-                -1, -1,  1,   1, -1,  1,  -1, -1, -1,
-                1, -1, -1,    1,  1, -1,  -1,  1, -1,
-            ]);
+			if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
+				console.error("Error compiling shader:", this.gl.getShaderInfoLog(shader));
+				this.gl.deleteShader(shader);
+				return null;
+			}
+			return shader;
+		}
 
-            const buffer = this.gl.createBuffer();
-            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
-            this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
+		createCube() {
+			const vertices = new Float32Array([
+				// Front face
+				-1, -1,  1,  1,  1,  1,  -1,  1,  1,
+				-1, -1, -1,  -1,  1, -1,   1,  1, -1,
+				-1,  1,  1,  -1,  1, -1,   1,  1,  1,
+				1,  1, -1,   1, -1,  1,   1, -1, -1,
+				-1, -1,  1,   1, -1,  1,  -1, -1, -1,
+				1, -1, -1,    1,  1, -1,  -1,  1, -1,
+			]);
 
-            return {
-                buffer: buffer,
-                rotation: 0,
-                position: [Math.random() * 6 - 3, Math.random() * 4 - 2, -6],
-                color: [Math.random(), Math.random(), Math.random(), 1.0]
-            };
-        }
+			return {
+				position: [Math.random() * 6 - 3, Math.random() * 4 - 2, -6],  // Random position in 3D space
+				color: [Math.random(), Math.random(), Math.random(), 1.0],  // Random color
+				rotation: 0, // Initialize rotation angle
+				vertices: vertices
+			};
+		}
 
-        drawCube(cube, deltaTime) {
-            // Update rotation
-            cube.rotation += deltaTime * 0.001;
+		createBuffer(cubes) {
+			// Prepare a large array to hold vertices for all cubes
+			const verticesArray = [];
+			for (let i = 0; i < cubes.length; i++) {
+				const cube = cubes[i];
+				const offset = cube.position;
 
-            // Create transformation matrices
-            const modelViewMatrix = mat4.create();
-            mat4.translate(modelViewMatrix, modelViewMatrix, cube.position);
-            mat4.rotate(modelViewMatrix, modelViewMatrix, cube.rotation, [0, 1, 0]);
+				// Transform cube's vertices based on its position
+				for (let j = 0; j < cube.vertices.length; j += 3) {
+					verticesArray.push(cube.vertices[j] + offset[0]);
+					verticesArray.push(cube.vertices[j + 1] + offset[1]);
+					verticesArray.push(cube.vertices[j + 2] + offset[2]);
+				}
+			}
 
-            const projectionMatrix = mat4.create();
-            mat4.perspective(projectionMatrix, Math.PI / 4, 
-                this.gl.canvas.width / this.gl.canvas.height, 0.1, 100.0);
+			const buffer = this.gl.createBuffer();
+			this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
+			this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(verticesArray), this.gl.STATIC_DRAW);
+			return buffer;
+		}
 
-            const mvpMatrix = mat4.create();
-            mat4.multiply(mvpMatrix, projectionMatrix, modelViewMatrix);
+		render(cubes, deltaTime) {
+			this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
 
-            // Set uniforms
-            this.gl.uniformMatrix4fv(this.uniformLocations.modelViewProjectionMatrix, false, mvpMatrix);
-            this.gl.uniform4fv(this.uniformLocations.color, cube.color);
+			const viewMatrix = mat4.create();
+			mat4.lookAt(viewMatrix, [0, 0, 15], [0, 0, 0], [0, 1, 0]);
 
-            // Set up vertices
-            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, cube.buffer);
-            this.gl.vertexAttribPointer(this.attributeLocations.position, 3, this.gl.FLOAT, false, 0, 0);
-            this.gl.enableVertexAttribArray(this.attributeLocations.position);
+			// Create a large buffer containing all cubes' vertices
+			const buffer = this.createBuffer(cubes);
 
-            // Draw the cube
-            this.gl.drawArrays(this.gl.TRIANGLES, 0, 36);
-        }
+			// Bind and set up vertex attribute pointers
+			this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
+			this.gl.vertexAttribPointer(this.attributeLocations.position, 3, this.gl.FLOAT, false, 0, 0);
+			this.gl.enableVertexAttribArray(this.attributeLocations.position);
 
-        render(cubes, deltaTime) {
-            this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
-            
-            for (const cube of cubes) {
-                this.drawCube(cube, deltaTime);
-            }
-        }
-    }
+			// Set up projection matrix (this defines the camera's perspective)
+			const projectionMatrix = mat4.create();
+			mat4.perspective(projectionMatrix, Math.PI / 4, this.gl.canvas.width / this.gl.canvas.height, 0.1, 100.0);
+
+			// Render each cube individually with its own transformation
+			for (const cube of cubes) {
+				// Increment the rotation for the cube for each frame
+				cube.rotation += deltaTime * 0.001;
+
+				// Create model matrix for each cube (its own local transformation)
+				const modelMatrix = mat4.create();
+				mat4.translate(modelMatrix, modelMatrix, cube.position);  // Positioning
+				mat4.rotate(modelMatrix, modelMatrix, cube.rotation, [0, 1, 0]);  // Rotation
+
+				// Combine the projection, view, and model matrices to form the final MVP matrix
+				const mvpMatrix = mat4.create();
+				mat4.multiply(mvpMatrix, projectionMatrix, viewMatrix); // MVP = P * V
+				mat4.multiply(mvpMatrix, mvpMatrix, modelMatrix); // MVP = MVP * M
+
+				// Set uniforms for each cube
+				this.gl.uniformMatrix4fv(this.uniformLocations.modelViewProjectionMatrix, false, mvpMatrix);
+				this.gl.uniform4fv(this.uniformLocations.color, cube.color);
+
+				// Draw each cube separately with the correct transformation
+				this.gl.drawArrays(this.gl.TRIANGLES, cubes.indexOf(cube) * 36, 36); // Each cube has 36 vertices
+			}
+		}
+	}
 
     async function startBenchmark() {
         document.getElementById('startButton').style.display = 'none';
