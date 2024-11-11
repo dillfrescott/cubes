@@ -22,7 +22,7 @@
             color: #4caf50;
         }
 
-        #score, #fps, #space, #api, #version {
+        #score, #fps, #space, #version {
             margin-top: 10px;
             font-size: 1.2em;
             color: #aaa;
@@ -61,8 +61,6 @@
 <div id="score">Score: N/A</div>
 <div id="fps">FPS: N/A</div>
 <div id="space">⠀</div>
-<div id="api">API: (start to see)</div>
-<div id="space">⠀</div>
 <div id="version">Version: 1.0.0</div>
 <div id="space">⠀</div>
 <button id="startButton" onclick="startBenchmark()">Start Benchmark</button>
@@ -73,365 +71,139 @@
     let score = 0, frameCount = 0, fpsSum = 0, warmUpFrames = 60;
     const cubesPerBatch = 20;
 
-	class WebGPURenderer {
-		async init(canvas) {
-			if (!navigator.gpu) throw new Error('WebGPU not supported');
-			
-			const adapter = await navigator.gpu.requestAdapter();
-			if (!adapter) throw new Error('No appropriate GPUAdapter found');
-			
-			this.device = await adapter.requestDevice();
-			this.context = canvas.getContext('webgpu');
-			
-			this.format = navigator.gpu.getPreferredCanvasFormat();
-			this.context.configure({
-				device: this.device,
-				format: this.format,
-				alphaMode: 'premultiplied',
-			});
+    class WebGLRenderer {
+        async init(canvas) {
+            this.gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (!this.gl) {
+                throw new Error("WebGL is not supported");
+            }
 
-			await this.createPipeline();
-			return true;
-		}
+            this.gl.enable(this.gl.DEPTH_TEST);
+            this.gl.enable(this.gl.CULL_FACE);
+            this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
-		async createPipeline() {
-			const shaderCode = `
-				struct Uniforms {
-					modelViewProjectionMatrix : mat4x4<f32>,
-					color : vec4<f32>,
-				}
+            await this.createProgram();
+            return true;
+        }
 
-				@binding(0) @group(0) var<uniform> uniforms : Uniforms;
+        async createProgram() {
+            const vertexShaderSource = `
+                attribute vec4 aPosition;
+                uniform mat4 uModelViewProjectionMatrix;
+                uniform vec4 uColor;
+                varying lowp vec4 vColor;
+                void main() {
+                    gl_Position = uModelViewProjectionMatrix * aPosition;
+                    vColor = uColor;
+                }
+            `;
 
-				struct VertexOutput {
-					@builtin(position) position : vec4<f32>,
-					@location(0) color : vec4<f32>,
-				}
+            const fragmentShaderSource = `
+                varying lowp vec4 vColor;
+                void main() {
+                    gl_FragColor = vColor;
+                }
+            `;
 
-				@vertex
-				fn vertexMain(@location(0) position: vec4<f32>) -> VertexOutput {
-					var output : VertexOutput;
-					output.position = uniforms.modelViewProjectionMatrix * position;
-					output.color = uniforms.color;
-					return output;
-				}
+            const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, vertexShaderSource);
+            const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, fragmentShaderSource);
 
-				@fragment
-				fn fragmentMain(@location(0) color: vec4<f32>) -> @location(0) vec4<f32> {
-					return color;
-				}
-			`;
+            this.program = this.gl.createProgram();
+            this.gl.attachShader(this.program, vertexShader);
+            this.gl.attachShader(this.program, fragmentShader);
+            this.gl.linkProgram(this.program);
 
-			// Create shader module from shader code
-			this.shaderModule = this.device.createShaderModule({
-				code: shaderCode
-			});
+            if (!this.gl.getProgramParameter(this.program, this.gl.LINK_STATUS)) {
+                throw new Error("Unable to initialize the shader program");
+            }
 
-			// Create pipeline layout with a bind group layout (for uniforms)
-			this.pipelineLayout = this.device.createPipelineLayout({
-				bindGroupLayouts: [this.device.createBindGroupLayout({
-					entries: [
-						{
-							binding: 0,
-							visibility: GPUShaderStage.VERTEX,
-							buffer: { type: 'uniform' }
-						}
-					]
-				})]
-			});
+            this.gl.useProgram(this.program);
 
-			// Create the render pipeline
-			this.pipeline = this.device.createRenderPipeline({
-				layout: this.pipelineLayout,
-				vertex: {
-					module: this.shaderModule,
-					entryPoint: 'vertexMain',
-					buffers: [{
-						arrayStride: 12, // 3 floats (x, y, z) for each vertex
-						attributes: [{
-							shaderLocation: 0,
-							offset: 0,
-							format: 'float32x3' // Vertex position (3 floats per vertex)
-						}]
-					}]
-				},
-				fragment: {
-					module: this.shaderModule,
-					entryPoint: 'fragmentMain',
-					targets: [{
-						format: this.format // Canvas color format
-					}]
-				},
-				primitive: {
-					topology: 'triangle-list', // Use a triangle list for the faces
-					cullMode: 'back' // Cull back faces to avoid rendering both sides of the cube
-				},
-				depthStencil: {
-					depthWriteEnabled: true,
-					depthCompare: 'less',
-					format: 'depth24plus' // Use 24-bit depth buffer
-				}
-			});
+            // Get uniform locations
+            this.uniformLocations = {
+                modelViewProjectionMatrix: this.gl.getUniformLocation(this.program, "uModelViewProjectionMatrix"),
+                color: this.gl.getUniformLocation(this.program, "uColor")
+            };
 
-			// Create the vertices for the cube faces (front, back, top, bottom, left, right)
-			const vertices = new Float32Array([
-				// Front face
-				-1, -1,  1,    1, -1,  1,    1,  1,  1,
-				-1, -1,  1,    1,  1,  1,   -1,  1,  1,
+            // Get attribute locations
+            this.attributeLocations = {
+                position: this.gl.getAttribLocation(this.program, "aPosition")
+            };
+        }
 
-				// Back face
-				-1, -1, -1,   -1,  1, -1,    1,  1, -1,
-				-1, -1, -1,    1,  1, -1,    1, -1, -1,
+        compileShader(type, source) {
+            const shader = this.gl.createShader(type);
+            this.gl.shaderSource(shader, source);
+            this.gl.compileShader(shader);
 
-				// Top face
-				-1,  1, -1,   -1,  1,  1,    1,  1,  1,
-				-1,  1, -1,    1,  1,  1,    1,  1, -1,
+            if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
+                console.error("Error compiling shader:", this.gl.getShaderInfoLog(shader));
+                this.gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
 
-				// Bottom face
-				-1, -1, -1,    1, -1, -1,    1, -1,  1,
-				-1, -1, -1,    1, -1,  1,   -1, -1,  1,
+        createCube() {
+            const vertices = new Float32Array([
+                // Front face
+                -1, -1,  1,  1,  1,  1,  -1,  1,  1,
+                -1, -1, -1,  -1,  1, -1,   1,  1, -1,
+                -1,  1,  1,  -1,  1, -1,   1,  1,  1,
+                1,  1, -1,   1, -1,  1,   1, -1, -1,
+                -1, -1,  1,   1, -1,  1,  -1, -1, -1,
+                1, -1, -1,    1,  1, -1,  -1,  1, -1,
+            ]);
 
-				// Right face
-				 1, -1, -1,    1,  1, -1,    1,  1,  1,
-				 1, -1, -1,    1,  1,  1,    1, -1,  1,
+            const buffer = this.gl.createBuffer();
+            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
+            this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
 
-				// Left face
-				-1, -1, -1,   -1, -1,  1,   -1,  1,  1,
-				-1, -1, -1,   -1,  1,  1,   -1,  1, -1,
-			]);
+            return {
+                buffer: buffer,
+                rotation: 0,
+                position: [Math.random() * 6 - 3, Math.random() * 4 - 2, -6],
+                color: [Math.random(), Math.random(), Math.random(), 1.0]
+            };
+        }
 
-			// Create vertex buffer for cube vertices
-			this.vertexBuffer = this.device.createBuffer({
-				size: vertices.byteLength,
-				usage: GPUBufferUsage.VERTEX,
-				mappedAtCreation: true,
-			});
+        drawCube(cube, deltaTime) {
+            // Update rotation
+            cube.rotation += deltaTime * 0.001;
 
-			new Float32Array(this.vertexBuffer.getMappedRange()).set(vertices);
-			this.vertexBuffer.unmap();
+            // Create transformation matrices
+            const modelViewMatrix = mat4.create();
+            mat4.translate(modelViewMatrix, modelViewMatrix, cube.position);
+            mat4.rotate(modelViewMatrix, modelViewMatrix, cube.rotation, [0, 1, 0]);
 
-			// Create depth texture for rendering
-			this.depthTexture = this.device.createTexture({
-				size: {
-					width: this.context.canvas.width,
-					height: this.context.canvas.height,
-					depthOrArrayLayers: 1
-				},
-				format: 'depth24plus',
-				usage: GPUTextureUsage.RENDER_ATTACHMENT
-			});
-		}
+            const projectionMatrix = mat4.create();
+            mat4.perspective(projectionMatrix, Math.PI / 4, 
+                this.gl.canvas.width / this.gl.canvas.height, 0.1, 100.0);
 
-		createCube() {
-			const uniformBuffer = this.device.createBuffer({
-				size: 16 * 4 + 4 * 4, // mat4 + vec4
-				usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-			});
+            const mvpMatrix = mat4.create();
+            mat4.multiply(mvpMatrix, projectionMatrix, modelViewMatrix);
 
-			const bindGroup = this.device.createBindGroup({
-				layout: this.pipeline.getBindGroupLayout(0),
-				entries: [{
-					binding: 0,
-					resource: { buffer: uniformBuffer }
-				}]
-			});
+            // Set uniforms
+            this.gl.uniformMatrix4fv(this.uniformLocations.modelViewProjectionMatrix, false, mvpMatrix);
+            this.gl.uniform4fv(this.uniformLocations.color, cube.color);
 
-			return {
-				rotation: 0,
-				position: [Math.random() * 6 - 3, Math.random() * 4 - 2, -6],
-				color: [Math.random(), Math.random(), Math.random(), 1.0],
-				uniformBuffer,
-				bindGroup
-			};
-		}
+            // Set up vertices
+            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, cube.buffer);
+            this.gl.vertexAttribPointer(this.attributeLocations.position, 3, this.gl.FLOAT, false, 0, 0);
+            this.gl.enableVertexAttribArray(this.attributeLocations.position);
 
-		drawCube(cube, deltaTime) {
-			cube.rotation += deltaTime * 0.001;
+            // Draw the cube
+            this.gl.drawArrays(this.gl.TRIANGLES, 0, 36);
+        }
 
-			const modelViewMatrix = mat4.create();
-			mat4.translate(modelViewMatrix, modelViewMatrix, cube.position);
-			mat4.rotate(modelViewMatrix, modelViewMatrix, cube.rotation, [0, 1, 0]);
-
-			const projectionMatrix = mat4.create();
-			mat4.perspective(projectionMatrix, Math.PI / 4, 
-				this.context.canvas.width / this.context.canvas.height, 0.1, 100.0);
-
-			const mvpMatrix = mat4.create();
-			mat4.multiply(mvpMatrix, projectionMatrix, modelViewMatrix);
-
-			this.device.queue.writeBuffer(
-				cube.uniformBuffer,
-				0,
-				new Float32Array([...mvpMatrix, ...cube.color])
-			);
-
-			return cube.bindGroup;
-		}
-
-		render(cubes, deltaTime) {
-			const commandEncoder = this.device.createCommandEncoder();
-			const renderPass = commandEncoder.beginRenderPass({
-				colorAttachments: [{
-					view: this.context.getCurrentTexture().createView(),
-					clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 },
-					loadOp: 'clear',
-					storeOp: 'store',
-				}],
-				depthStencilAttachment: {
-					view: this.depthTexture.createView(),
-					depthClearValue: 1.0,
-					depthLoadOp: 'clear',
-					depthStoreOp: 'store',
-				}
-			});
-
-			renderPass.setPipeline(this.pipeline);
-			renderPass.setVertexBuffer(0, this.vertexBuffer);
-
-			for (const cube of cubes) {
-				const bindGroup = this.drawCube(cube, deltaTime);
-				renderPass.setBindGroup(0, bindGroup);
-				renderPass.draw(36, 1, 0, 0);
-			}
-
-			renderPass.end();
-			this.device.queue.submit([commandEncoder.finish()]);
-		}
-	}
-
-	class WebGLRenderer {
-		async init(canvas) {
-			this.gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-			if (!this.gl) {
-				throw new Error("WebGL is not supported");
-			}
-
-			this.gl.enable(this.gl.DEPTH_TEST);
-			this.gl.enable(this.gl.CULL_FACE);
-			this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
-
-			await this.createProgram();
-			return true;
-		}
-
-		async createProgram() {
-			const vertexShaderSource = `
-				attribute vec4 aPosition;
-				uniform mat4 uModelViewProjectionMatrix;
-				uniform vec4 uColor;
-				varying lowp vec4 vColor;
-				void main() {
-					gl_Position = uModelViewProjectionMatrix * aPosition;
-					vColor = uColor;
-				}
-			`;
-
-			const fragmentShaderSource = `
-				varying lowp vec4 vColor;
-				void main() {
-					gl_FragColor = vColor;
-				}
-			`;
-
-			const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, vertexShaderSource);
-			const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, fragmentShaderSource);
-
-			this.program = this.gl.createProgram();
-			this.gl.attachShader(this.program, vertexShader);
-			this.gl.attachShader(this.program, fragmentShader);
-			this.gl.linkProgram(this.program);
-
-			if (!this.gl.getProgramParameter(this.program, this.gl.LINK_STATUS)) {
-				throw new Error("Unable to initialize the shader program");
-			}
-
-			this.gl.useProgram(this.program);
-
-			// Get uniform locations
-			this.uniformLocations = {
-				modelViewProjectionMatrix: this.gl.getUniformLocation(this.program, "uModelViewProjectionMatrix"),
-				color: this.gl.getUniformLocation(this.program, "uColor")
-			};
-
-			// Get attribute locations
-			this.attributeLocations = {
-				position: this.gl.getAttribLocation(this.program, "aPosition")
-			};
-		}
-
-		compileShader(type, source) {
-			const shader = this.gl.createShader(type);
-			this.gl.shaderSource(shader, source);
-			this.gl.compileShader(shader);
-
-			if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
-				console.error("Error compiling shader:", this.gl.getShaderInfoLog(shader));
-				this.gl.deleteShader(shader);
-				return null;
-			}
-			return shader;
-		}
-
-		createCube() {
-			const vertices = new Float32Array([
-				// Front face
-				-1, -1,  1,  1,  1,  1,  -1,  1,  1,
-				-1, -1, -1,  -1,  1, -1,   1,  1, -1,
-				-1,  1,  1,  -1,  1, -1,   1,  1,  1,
-				1,  1, -1,   1, -1,  1,   1, -1, -1,
-				-1, -1,  1,   1, -1,  1,  -1, -1, -1,
-				1, -1, -1,    1,  1, -1,  -1,  1, -1,
-			]);
-
-			const buffer = this.gl.createBuffer();
-			this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
-			this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
-
-			return {
-				buffer: buffer,
-				rotation: 0,
-				position: [Math.random() * 6 - 3, Math.random() * 4 - 2, -6],
-				color: [Math.random(), Math.random(), Math.random(), 1.0]
-			};
-		}
-
-		drawCube(cube, deltaTime) {
-			// Update rotation
-			cube.rotation += deltaTime * 0.001;
-
-			// Create transformation matrices
-			const modelViewMatrix = mat4.create();
-			mat4.translate(modelViewMatrix, modelViewMatrix, cube.position);
-			mat4.rotate(modelViewMatrix, modelViewMatrix, cube.rotation, [0, 1, 0]);
-
-			const projectionMatrix = mat4.create();
-			mat4.perspective(projectionMatrix, Math.PI / 4, 
-				this.gl.canvas.width / this.gl.canvas.height, 0.1, 100.0);
-
-			const mvpMatrix = mat4.create();
-			mat4.multiply(mvpMatrix, projectionMatrix, modelViewMatrix);
-
-			// Set uniforms
-			this.gl.uniformMatrix4fv(this.uniformLocations.modelViewProjectionMatrix, false, mvpMatrix);
-			this.gl.uniform4fv(this.uniformLocations.color, cube.color);
-
-			// Set up vertices
-			this.gl.bindBuffer(this.gl.ARRAY_BUFFER, cube.buffer);
-			this.gl.vertexAttribPointer(this.attributeLocations.position, 3, this.gl.FLOAT, false, 0, 0);
-			this.gl.enableVertexAttribArray(this.attributeLocations.position);
-
-			// Draw the cube
-			this.gl.drawArrays(this.gl.TRIANGLES, 0, 36);
-		}
-
-		render(cubes, deltaTime) {
-			this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
-			
-			for (const cube of cubes) {
-				this.drawCube(cube, deltaTime);
-			}
-		}
-	}
+        render(cubes, deltaTime) {
+            this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+            
+            for (const cube of cubes) {
+                this.drawCube(cube, deltaTime);
+            }
+        }
+    }
 
     async function startBenchmark() {
         document.getElementById('startButton').style.display = 'none';
@@ -440,14 +212,10 @@
         const canvas = document.getElementById('gpuCanvas');
         
         try {
-            renderer = new WebGPURenderer();
-            await renderer.init(canvas);
-            document.getElementById('api').innerText = 'API: WebGPU';
-        } catch (e) {
-            console.log('WebGPU not available, falling back to WebGL:', e);
             renderer = new WebGLRenderer();
             await renderer.init(canvas);
-            document.getElementById('api').innerText = 'API: WebGL';
+        } catch (e) {
+            console.log('WebGL not available:', e);
         }
 
         cubes = [renderer.createCube()];
@@ -488,11 +256,11 @@
             for (let i = 0; i < cubesPerBatch; i++) {
                 cubes.push(renderer.createCube());
             }
-            score += cubesPerBatch;
         }
 
         requestAnimationFrame(renderLoop);
     }
 </script>
+
 </body>
 </html>
