@@ -78,7 +78,7 @@
 				throw new Error("WebGL is not supported");
 			}
 
-			// Disable face culling to render both sides of each cube
+			// Disable face culling to render both sides of each shape
 			this.gl.disable(this.gl.CULL_FACE);
 
 			this.gl.enable(this.gl.DEPTH_TEST);
@@ -146,7 +146,7 @@
 			return shader;
 		}
 
-		createCube() {
+		createShape() {
 			const vertices = new Float32Array([
 				// Front face
 				-1, -1,  1,  1,  1,  1,  -1,  1,  1,
@@ -169,14 +169,14 @@
 			// Prepare a large array to hold vertices for all shapes
 			const verticesArray = [];
 			for (let i = 0; i < shapes.length; i++) {
-				const cube = shapes[i];
-				const offset = cube.position;
+				const shape = shapes[i];
+				const offset = shape.position;
 
-				// Transform cube's vertices based on its position
-				for (let j = 0; j < cube.vertices.length; j += 3) {
-					verticesArray.push(cube.vertices[j] + offset[0]);
-					verticesArray.push(cube.vertices[j + 1] + offset[1]);
-					verticesArray.push(cube.vertices[j + 2] + offset[2]);
+				// Transform shape's vertices based on its position
+				for (let j = 0; j < shape.vertices.length; j += 3) {
+					verticesArray.push(shape.vertices[j] + offset[0]);
+					verticesArray.push(shape.vertices[j + 1] + offset[1]);
+					verticesArray.push(shape.vertices[j + 2] + offset[2]);
 				}
 			}
 
@@ -204,27 +204,27 @@
 			const projectionMatrix = mat4.create();
 			mat4.perspective(projectionMatrix, Math.PI / 4, this.gl.canvas.width / this.gl.canvas.height, 0.1, 100.0);
 
-			// Render each cube individually with its own transformation
-			for (const cube of shapes) {
-				// Increment the rotation for the cube for each frame
-				cube.rotation += deltaTime * 0.001;
+			// Render each shape individually with its own transformation
+			for (const shape of shapes) {
+				// Increment the rotation for the shape for each frame
+				shape.rotation += deltaTime * 0.001;
 
-				// Create model matrix for each cube (its own local transformation)
+				// Create model matrix for each shape (its own local transformation)
 				const modelMatrix = mat4.create();
-				mat4.translate(modelMatrix, modelMatrix, cube.position);  // Positioning
-				mat4.rotate(modelMatrix, modelMatrix, cube.rotation, [0, 1, 0]);  // Rotation
+				mat4.translate(modelMatrix, modelMatrix, shape.position);  // Positioning
+				mat4.rotate(modelMatrix, modelMatrix, shape.rotation, [0, 1, 0]);  // Rotation
 
 				// Combine the projection, view, and model matrices to form the final MVP matrix
 				const mvpMatrix = mat4.create();
 				mat4.multiply(mvpMatrix, projectionMatrix, viewMatrix); // MVP = P * V
 				mat4.multiply(mvpMatrix, mvpMatrix, modelMatrix); // MVP = MVP * M
 
-				// Set uniforms for each cube
+				// Set uniforms for each shape
 				this.gl.uniformMatrix4fv(this.uniformLocations.modelViewProjectionMatrix, false, mvpMatrix);
-				this.gl.uniform4fv(this.uniformLocations.color, cube.color);
+				this.gl.uniform4fv(this.uniformLocations.color, shape.color);
 
-				// Draw each cube separately with the correct transformation
-				this.gl.drawArrays(this.gl.TRIANGLES, shapes.indexOf(cube) * 36, 36); // Each cube has 36 vertices
+				// Draw each shape separately with the correct transformation
+				this.gl.drawArrays(this.gl.TRIANGLES, shapes.indexOf(shape) * 36, 36); // Each shape has 36 vertices
 			}
 		}
 	}
@@ -242,7 +242,7 @@
             console.log('WebGL not available:', e);
         }
 
-        shapes = [renderer.createCube()];
+        shapes = [renderer.createShape()];
         score = 1;
         frameCount = 0;
         fpsSum = 0;
@@ -278,7 +278,7 @@
 
         if (frameCount % 1 === 0) {
             for (let i = 0; i < shapesPerBatch; i++) {
-                shapes.push(renderer.createCube());
+                shapes.push(renderer.createShape());
             }
         }
 
