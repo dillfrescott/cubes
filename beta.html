@@ -95,9 +95,9 @@
 
 <div id="space">⠀</div>
 <h1>Dill's 3D Benchmark</h1>
-<h3>Benchmark completes when the FPS drops below 10.</h3>
+<h3>Benchmark completes when the FPS drops below 5.</h3>
 <h3>Results are exponential, a device that scores twice as high is many times more powerful, not just double.</h3>
-<canvas id="gpuCanvas" width="500" height="500"></canvas>
+<canvas id="gpuCanvas" width="100" height="100"></canvas>
 <h5>Make sure to keep the tab in focus and/or device screen awake for the duration of the test.</h5>
 
 <!-- Score and FPS inside styled boxes -->
@@ -110,7 +110,7 @@
 </div>
 
 <div id="warningMessage">
-  Your device WILL heat up during this benchmark!
+  Your device may heat up during this benchmark!
 </div>
 
 <div id="space">⠀</div>
@@ -123,7 +123,7 @@
 <script>
     let renderer, shapes = [], lastRenderTime = performance.now();
     let score = 0, frameCount = 0, fpsSum = 0, warmUpFrames = 1;
-    const shapesPerBatch = 500;
+    const shapesPerBatch = 1000;
     const fpsHistory = [];
 
     class WebGPURenderer {
@@ -316,12 +316,12 @@
 
             document.getElementById('fps').innerText = 'FPS: ' + Math.round(avgFPS);
 
-            if (avgFPS < 10) {
-                document.getElementById('score').innerText = 'Final Score: ' + shapes.length + ' points';
+            if (avgFPS < 5) {
+                document.getElementById('score').innerText = 'Final Score: ' + ((shapes.length - 1) / 10) + ' points';
                 return;
             }
 
-            document.getElementById('score').innerText = 'Score: ' + (shapes.length - 1);
+            document.getElementById('score').innerText = 'Score: ' + ((shapes.length - 1) / 10);
         }
 
         renderer.applyTransformations(shapes);
