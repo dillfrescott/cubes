@@ -123,7 +123,7 @@
 <script>
     let renderer, shapes = [], lastRenderTime = performance.now();
     let score = 0, frameCount = 0, fpsSum = 0, warmUpFrames = 1;
-    const shapesPerBatch = 200;
+    const shapesPerBatch = 50;
     const fpsHistory = [];
 
     class WebGPURenderer {
