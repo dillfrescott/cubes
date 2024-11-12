@@ -316,10 +316,25 @@
 
             document.getElementById('fps').innerText = 'FPS: ' + Math.round(avgFPS);
 
-            if (avgFPS < 5) {
-                document.getElementById('score').innerText = 'Final Score: ' + ((shapes.length - 1) / 1000) + ' points';
-                return;
-            }
+			if (avgFPS < 5) {
+				let finalScore = (shapes.length - 1) / 1000;
+				let scoreLabel = '';
+
+				// Determine the performance category based on finalScore
+				if (finalScore < 199) {
+					scoreLabel = 'Low End';
+				} else if (finalScore >= 200 && finalScore <= 699) {
+					scoreLabel = 'Mid Range';
+				} else if (finalScore >= 700 && finalScore < 824) {
+					scoreLabel = 'High End';
+				} else {
+					scoreLabel = 'Extreme High End';
+				}
+
+				let scoreText = finalScore % 1 === 0 ? finalScore.toFixed(0) : finalScore.toFixed(2);
+				document.getElementById('score').innerText = 'Score: ' + scoreText + ' - ' + scoreLabel;
+				return;
+			}
 
             document.getElementById('score').innerText = 'Score: ' + ((shapes.length - 1) / 1000);
         }
