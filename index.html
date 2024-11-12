@@ -60,22 +60,24 @@
 <body>
 
 <h1>Dill's 3D Shape Benchmark</h1>
-<h3>Benchmark completes when avg FPS drops below 15.</h3>
+<h3>Benchmark completes when avg FPS drops below 5.</h3>
 <h3>Results are exponential, a device that scores twice as high is many times more powerful, not just double.</h3>
 <canvas id="gpuCanvas" width="600" height="400"></canvas>
+<h5>Make sure to keep the tab in focus for the duration of the test.</h5>
 <div id="score">Score: N/A</div>
 <div id="fps">FPS: N/A</div>
 <div id="space">⠀</div>
-<div id="version">Version: 1.0.2</div>
+<div id="version">Version: 1.0.3</div>
 <div id="space">⠀</div>
 <button id="startButton" onclick="startBenchmark()">Start Benchmark</button>
 <button id="exampleScoresButton" onclick="window.location.href='https://benchmark.dill.moe/scores'">Example Scores</button>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"></script>
 <script>
-    let renderer, shapes = [], lastRenderTime = performance.now();
-    let score = 0, frameCount = 0, fpsSum = 0, warmUpFrames = 60;
-    const shapesPerBatch = 20;
+	let renderer, shapes = [], lastRenderTime = performance.now();
+	let score = 0, frameCount = 0, fpsSum = 0, warmUpFrames = 20;
+	const shapesPerBatch = 20;
+	const fpsHistory = [];
 
 	class WebGLRenderer {
 		async init(canvas) {
@@ -84,32 +86,48 @@
 				throw new Error("WebGL is not supported");
 			}
 
-			// Disable face culling to render both sides of each shape
 			this.gl.disable(this.gl.CULL_FACE);
-
 			this.gl.enable(this.gl.DEPTH_TEST);
 			this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
 			await this.createProgram();
+			this.vertexBuffer = this.gl.createBuffer();
 			return true;
 		}
 
 		async createProgram() {
 			const vertexShaderSource = `
 				attribute vec4 aPosition;
-				uniform mat4 uModelViewProjectionMatrix;
-				uniform vec4 uColor;
-				varying lowp vec4 vColor;
+				uniform mat4 uModelViewMatrix;
+				uniform mat4 uProjectionMatrix;
+				uniform vec3 uLightPosition;
+				varying vec3 vPosition;
+				varying vec3 vNormal;
+				varying vec3 vLight;
 				void main() {
-					gl_Position = uModelViewProjectionMatrix * aPosition;
-					vColor = uColor;
+					vPosition = vec3(uModelViewMatrix * aPosition);
+					vNormal = normalize(vec3(uModelViewMatrix * vec4(aPosition.x, aPosition.y, aPosition.z, 0.0)));
+					vLight = normalize(uLightPosition - vPosition);
+					gl_Position = uProjectionMatrix * uModelViewMatrix * aPosition;
 				}
 			`;
 
 			const fragmentShaderSource = `
-				varying lowp vec4 vColor;
+				precision mediump float;
+				varying vec3 vPosition;
+				varying vec3 vNormal;
+				varying vec3 vLight;
+				uniform vec4 uColor;
+				uniform vec3 uLightColor;
+				uniform vec3 uAmbientColor;
+				uniform float uShininess;
 				void main() {
-					gl_FragColor = vColor;
+					vec3 ambient = uAmbientColor * uColor.rgb;
+					vec3 diffuse = max(dot(vNormal, vLight), 0.0) * uLightColor * uColor.rgb;
+					vec3 reflectDir = reflect(-vLight, vNormal);
+					vec3 viewDir = normalize(-vPosition);
+					vec3 specular = pow(max(dot(viewDir, reflectDir), 0.0), uShininess) * uLightColor;
+					gl_FragColor = vec4(ambient + diffuse + specular, uColor.a);
 				}
 			`;
 
@@ -122,18 +140,21 @@
 			this.gl.linkProgram(this.program);
 
 			if (!this.gl.getProgramParameter(this.program, this.gl.LINK_STATUS)) {
-				throw new Error("Unable to initialize the shader program");
+				throw new Error("Unable to initialize the shader program: " + this.gl.getProgramInfoLog(this.program));
 			}
 
 			this.gl.useProgram(this.program);
 
-			// Get uniform locations
 			this.uniformLocations = {
-				modelViewProjectionMatrix: this.gl.getUniformLocation(this.program, "uModelViewProjectionMatrix"),
-				color: this.gl.getUniformLocation(this.program, "uColor")
+				modelViewMatrix: this.gl.getUniformLocation(this.program, "uModelViewMatrix"),
+				projectionMatrix: this.gl.getUniformLocation(this.program, "uProjectionMatrix"),
+				color: this.gl.getUniformLocation(this.program, "uColor"),
+				lightPosition: this.gl.getUniformLocation(this.program, "uLightPosition"),
+				lightColor: this.gl.getUniformLocation(this.program, "uLightColor"),
+				ambientColor: this.gl.getUniformLocation(this.program, "uAmbientColor"),
+				shininess: this.gl.getUniformLocation(this.program, "uShininess")
 			};
 
-			// Get attribute locations
 			this.attributeLocations = {
 				position: this.gl.getAttribLocation(this.program, "aPosition")
 			};
@@ -153,143 +174,150 @@
 		}
 
 		createShape() {
-			const vertices = new Float32Array([
-				// Front face
-				-1, -1,  1,  1,  1,  1,  -1,  1,  1,
-				-1, -1, -1,  -1,  1, -1,   1,  1, -1,
-				-1,  1,  1,  -1,  1, -1,   1,  1,  1,
-				1,  1, -1,   1, -1,  1,   1, -1, -1,
-				-1, -1,  1,   1, -1,  1,  -1, -1, -1,
-				1, -1, -1,    1,  1, -1,  -1,  1, -1,
-			]);
-
 			return {
-				position: [Math.random() * 6 - 3, Math.random() * 4 - 2, -6],  // Random position in 3D space
-				color: [Math.random(), Math.random(), Math.random(), 1.0],  // Random color
-				rotation: 0, // Initialize rotation angle
-				vertices: vertices
+				position: [Math.random() * 10 - 5, Math.random() * 6 - 3, -10],
+				color: [Math.random(), Math.random(), Math.random(), 1.0],
+				rotation: 0
 			};
-		}
-
-		createBuffer(shapes) {
-			// Prepare a large array to hold vertices for all shapes
-			const verticesArray = [];
-			for (let i = 0; i < shapes.length; i++) {
-				const shape = shapes[i];
-				const offset = shape.position;
-
-				// Transform shape's vertices based on its position
-				for (let j = 0; j < shape.vertices.length; j += 3) {
-					verticesArray.push(shape.vertices[j] + offset[0]);
-					verticesArray.push(shape.vertices[j + 1] + offset[1]);
-					verticesArray.push(shape.vertices[j + 2] + offset[2]);
-				}
-			}
-
-			const buffer = this.gl.createBuffer();
-			this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
-			this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(verticesArray), this.gl.STATIC_DRAW);
-			return buffer;
 		}
 
 		render(shapes, deltaTime) {
 			this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
 
 			const viewMatrix = mat4.create();
-			mat4.lookAt(viewMatrix, [0, 0, 15], [0, 0, 0], [0, 1, 0]);
+			mat4.lookAt(viewMatrix, [0, 0, 20], [0, 0, 0], [0, 1, 0]);
 
-			// Create a large buffer containing all shapes' vertices
 			const buffer = this.createBuffer(shapes);
-
-			// Bind and set up vertex attribute pointers
 			this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
 			this.gl.vertexAttribPointer(this.attributeLocations.position, 3, this.gl.FLOAT, false, 0, 0);
 			this.gl.enableVertexAttribArray(this.attributeLocations.position);
 
-			// Set up projection matrix (this defines the camera's perspective)
 			const projectionMatrix = mat4.create();
 			mat4.perspective(projectionMatrix, Math.PI / 4, this.gl.canvas.width / this.gl.canvas.height, 0.1, 100.0);
 
-			// Render each shape individually with its own transformation
-			for (const shape of shapes) {
-				// Increment the rotation for the shape for each frame
+			shapes.forEach(shape => {
 				shape.rotation += deltaTime * 0.001;
 
-				// Create model matrix for each shape (its own local transformation)
 				const modelMatrix = mat4.create();
-				mat4.translate(modelMatrix, modelMatrix, shape.position);  // Positioning
-				mat4.rotate(modelMatrix, modelMatrix, shape.rotation, [0, 1, 0]);  // Rotation
+				mat4.translate(modelMatrix, modelMatrix, shape.position);
+				mat4.rotate(modelMatrix, modelMatrix, shape.rotation, [0, 1, 0]);
 
-				// Combine the projection, view, and model matrices to form the final MVP matrix
-				const mvpMatrix = mat4.create();
-				mat4.multiply(mvpMatrix, projectionMatrix, viewMatrix); // MVP = P * V
-				mat4.multiply(mvpMatrix, mvpMatrix, modelMatrix); // MVP = MVP * M
+				const modelViewMatrix = mat4.create();
+				mat4.multiply(modelViewMatrix, viewMatrix, modelMatrix);
 
-				// Set uniforms for each shape
-				this.gl.uniformMatrix4fv(this.uniformLocations.modelViewProjectionMatrix, false, mvpMatrix);
+				this.gl.uniformMatrix4fv(this.uniformLocations.modelViewMatrix, false, modelViewMatrix);
+				this.gl.uniformMatrix4fv(this.uniformLocations.projectionMatrix, false, projectionMatrix);
 				this.gl.uniform4fv(this.uniformLocations.color, shape.color);
+				this.gl.uniform3fv(this.uniformLocations.lightPosition, [10.0, 10.0, 10.0]);
+				this.gl.uniform3fv(this.uniformLocations.lightColor, [1.0, 1.0, 1.0]);
+				this.gl.uniform3fv(this.uniformLocations.ambientColor, [0.1, 0.1, 0.1]);
+				this.gl.uniform1f(this.uniformLocations.shininess, 32.0);
 
-				// Draw each shape separately with the correct transformation
-				this.gl.drawArrays(this.gl.TRIANGLES, shapes.indexOf(shape) * 36, 36); // Each shape has 36 vertices
+				this.gl.drawArrays(this.gl.TRIANGLES, shapes.indexOf(shape) * 36, 36);
+			});
+		}
+
+		createBuffer(shapes) {
+			const vertices = [
+				-1, -1,  1,  1,  1,  1,  -1,  1,  1,
+				-1, -1, -1,  -1,  1, -1,   1,  1, -1,
+				-1,  1,  1,  -1,  1, -1,   1,  1,  1,
+				1,  1, -1,   1, -1, 1,   1, -1, -1,
+				-1, -1,  1,   1, -1,  1,  -1, -1, -1,
+				1, -1, -1,    1,  1, -1,  -1,  1, -1,
+			];
+
+			const normals = [
+				0, 0, 1,  0, 0, 1,  0, 0, 1,
+				0, 0, -1, 0, 0, -1, 0, 0, -1,
+				0, 1, 0,  0, 1, 0,  0, 1, 0,
+				0, -1, 0, 0, -1, 0, 0, -1, 0,
+				1, 0, 0,  1, 0, 0,  1, 0, 0,
+				-1, 0, 0, -1, 0, 0, -1, 0, 0,
+			];
+
+			const verticesArray = [];
+			const normalsArray = [];
+			for (const shape of shapes) {
+				const offset = shape.position;
+				for (let j = 0; j < vertices.length; j += 3) {
+					verticesArray.push(vertices[j] + offset[0]);
+					verticesArray.push(vertices[j + 1] + offset[1]);
+					verticesArray.push(vertices[j + 2] + offset[2]);
+					normalsArray.push(normals[j]);
+					normalsArray.push(normals[j + 1]);
+					normalsArray.push(normals[j + 2]);
+				}
 			}
+
+			this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer);
+			this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(verticesArray.concat(normalsArray)), this.gl.DYNAMIC_DRAW);
+			return this.vertexBuffer;
 		}
 	}
 
-    async function startBenchmark() {
-        document.getElementById('startButton').style.display = 'none';
-        document.getElementById('score').innerText = 'Benchmarking...';
+	async function startBenchmark() {
+		document.getElementById('startButton').style.display = 'none';
+		document.getElementById('score').innerText = 'Benchmarking...';
 
-        const canvas = document.getElementById('gpuCanvas');
-        
-        try {
-            renderer = new WebGLRenderer();
-            await renderer.init(canvas);
-        } catch (e) {
-            console.log('WebGL not available:', e);
-        }
+		const canvas = document.getElementById('gpuCanvas');
+		
+		try {
+			renderer = new WebGLRenderer();
+			await renderer.init(canvas);
+		} catch (e) {
+			console.log('WebGL not available:', e);
+			document.getElementById('score').innerText = 'WebGL not available';
+			return;
+		}
 
-        shapes = [renderer.createShape()];
-        score = 1;
-        frameCount = 0;
-        fpsSum = 0;
+		shapes = [renderer.createShape()];
+		score = 1;
+		frameCount = 0;
+		fpsSum = 0;
+		fpsHistory.length = 0; // Clear the FPS history
 
-        requestAnimationFrame(renderLoop);
-    }
+		requestAnimationFrame(renderLoop);
+	}
 
-    function renderLoop(now) {
-        const deltaTime = now - lastRenderTime;
-        lastRenderTime = now;
+	function renderLoop(now) {
+		const deltaTime = now - lastRenderTime;
+		lastRenderTime = now;
 
-        frameCount++;
-        fpsSum += 1000 / deltaTime;
+		frameCount++;
+		const fps = 1000 / deltaTime;
 
-        if (frameCount % 1 === 0) {
-            const avgFPS = fpsSum / frameCount;
-            document.getElementById('fps').innerText = `FPS: ${Math.round(avgFPS)}`;
-        }
+		// Store the current FPS and timestamp
+		fpsHistory.push({ fps, timestamp: now });
 
-        if (frameCount > warmUpFrames) {
-            const avgFPS = fpsSum / frameCount;
-            if (avgFPS < 15) {
-                document.getElementById('score').innerText = 'Final Score: ' + shapes.length + ' shapes';
-                return;
-            }
+		// Remove entries from the history that are older than 1 second
+		while (fpsHistory.length > 0 && now - fpsHistory[0].timestamp > 1000) {
+			fpsHistory.shift();
+		}
 
-            document.getElementById('score').innerText = 'Shapes: ' + shapes.length;
-            frameCount = 0;
-            fpsSum = 0;
-        }
+		// Calculate the average FPS over the last second
+		if (frameCount > warmUpFrames) {
+			const totalFPS = fpsHistory.reduce((sum, entry) => sum + entry.fps, 0);
+			const avgFPS = totalFPS / fpsHistory.length;
 
-        renderer.render(shapes, deltaTime);
+			document.getElementById('fps').innerText = 'FPS: ' + Math.round(avgFPS);
 
-        if (frameCount % 1 === 0) {
-            for (let i = 0; i < shapesPerBatch; i++) {
-                shapes.push(renderer.createShape());
-            }
-        }
+			if (avgFPS < 5) {
+				document.getElementById('score').innerText = 'Final Score: ' + shapes.length + ' shapes';
+				return;
+			}
 
-        requestAnimationFrame(renderLoop);
-    }
+			document.getElementById('score').innerText = 'Shapes: ' + shapes.length;
+		}
+
+		renderer.render(shapes, deltaTime);
+
+		for (let i = 0; i < shapesPerBatch; i++) {
+			shapes.push(renderer.createShape());
+		}
+
+		requestAnimationFrame(renderLoop);
+	}
 </script>
 
 </body>
