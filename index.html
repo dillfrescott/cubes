@@ -61,15 +61,15 @@
 <div id="score">Score: N/A</div>
 <div id="fps">FPS: N/A</div>
 <div id="space">⠀</div>
-<div id="version">Version: 1.0.1</div>
+<div id="version">Version: 1.0.2</div>
 <div id="space">⠀</div>
 <button id="startButton" onclick="startBenchmark()">Start Benchmark</button>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"></script>
 <script>
-    let renderer, cubes = [], lastRenderTime = performance.now();
+    let renderer, shapes = [], lastRenderTime = performance.now();
     let score = 0, frameCount = 0, fpsSum = 0, warmUpFrames = 60;
-    const cubesPerBatch = 20;
+    const shapesPerBatch = 20;
 
 	class WebGLRenderer {
 		async init(canvas) {
@@ -165,11 +165,11 @@
 			};
 		}
 
-		createBuffer(cubes) {
-			// Prepare a large array to hold vertices for all cubes
+		createBuffer(shapes) {
+			// Prepare a large array to hold vertices for all shapes
 			const verticesArray = [];
-			for (let i = 0; i < cubes.length; i++) {
-				const cube = cubes[i];
+			for (let i = 0; i < shapes.length; i++) {
+				const cube = shapes[i];
 				const offset = cube.position;
 
 				// Transform cube's vertices based on its position
@@ -186,14 +186,14 @@
 			return buffer;
 		}
 
-		render(cubes, deltaTime) {
+		render(shapes, deltaTime) {
 			this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
 
 			const viewMatrix = mat4.create();
 			mat4.lookAt(viewMatrix, [0, 0, 15], [0, 0, 0], [0, 1, 0]);
 
-			// Create a large buffer containing all cubes' vertices
-			const buffer = this.createBuffer(cubes);
+			// Create a large buffer containing all shapes' vertices
+			const buffer = this.createBuffer(shapes);
 
 			// Bind and set up vertex attribute pointers
 			this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
@@ -205,7 +205,7 @@
 			mat4.perspective(projectionMatrix, Math.PI / 4, this.gl.canvas.width / this.gl.canvas.height, 0.1, 100.0);
 
 			// Render each cube individually with its own transformation
-			for (const cube of cubes) {
+			for (const cube of shapes) {
 				// Increment the rotation for the cube for each frame
 				cube.rotation += deltaTime * 0.001;
 
@@ -224,7 +224,7 @@
 				this.gl.uniform4fv(this.uniformLocations.color, cube.color);
 
 				// Draw each cube separately with the correct transformation
-				this.gl.drawArrays(this.gl.TRIANGLES, cubes.indexOf(cube) * 36, 36); // Each cube has 36 vertices
+				this.gl.drawArrays(this.gl.TRIANGLES, shapes.indexOf(cube) * 36, 36); // Each cube has 36 vertices
 			}
 		}
 	}
@@ -242,7 +242,7 @@
             console.log('WebGL not available:', e);
         }
 
-        cubes = [renderer.createCube()];
+        shapes = [renderer.createCube()];
         score = 1;
         frameCount = 0;
         fpsSum = 0;
@@ -265,20 +265,20 @@
         if (frameCount > warmUpFrames) {
             const avgFPS = fpsSum / frameCount;
             if (avgFPS < 15) {
-                document.getElementById('score').innerText = 'Final Score: ' + cubes.length + ' cubes';
+                document.getElementById('score').innerText = 'Final Score: ' + shapes.length + ' shapes';
                 return;
             }
 
-            document.getElementById('score').innerText = 'Cubes: ' + cubes.length;
+            document.getElementById('score').innerText = 'Shapes: ' + shapes.length;
             frameCount = 0;
             fpsSum = 0;
         }
 
-        renderer.render(cubes, deltaTime);
+        renderer.render(shapes, deltaTime);
 
         if (frameCount % 1 === 0) {
-            for (let i = 0; i < cubesPerBatch; i++) {
-                cubes.push(renderer.createCube());
+            for (let i = 0; i < shapesPerBatch; i++) {
+                shapes.push(renderer.createCube());
             }
         }
 
