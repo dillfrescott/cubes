@@ -11,147 +11,211 @@
         }
     }
     document.addEventListener('DOMContentLoaded', requestWakeLock);
+
+    function startBenchmark() {
+        document.getElementById('startButton').style.display = 'none';
+        document.getElementById('warningMessage').style.display = 'none';
+        document.getElementById('gpuCanvas').style.display = 'block';
+        document.getElementById('emergencyStopButton').style.display = 'block';
+        // Start benchmark logic here
+    }
+
+    function emergencyStop() {
+        document.getElementById('gpuCanvas').style.display = 'none';
+        document.getElementById('emergencyStopButton').style.display = 'none';
+        document.getElementById('startButton').style.display = 'block';
+        // Emergency stop logic here
+    }
+
+    function showExampleScores() {
+        window.location.href = 'https://benchmark.dill.moe/scores';
+    }
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dill's 3D Benchmark</title>
     <style>
-	html, body {
-		width: 100%;
-		height: 100%;
-		margin: 0;
-		padding: 0;
-		overflow-x: hidden;
-		overflow-y: hidden;
-	}
+    @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
 
-	body {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background-color: #121212;
-		color: #eaeaea;
-		font-family: Arial, sans-serif;
-	}
+    html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        background: #0d1117;
+        color: #8b949e;
+        font-family: 'Roboto Mono', monospace;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        position: relative;
+        min-height: 100vh;
+    }
 
-	.container {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: flex-start;
-		width: 100vw;
-		max-width: 100vw;
-		height: 100vh;
-		overflow-y: auto;
-		padding: 20px;
-		box-sizing: border-box;
-	}
+    .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        width: 90%;
+        max-width: 800px;
+        padding: 40px;
+        background: #161b22;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        position: relative;
+        margin-top: 20px;
+        margin-bottom: 20px;
+        animation: fadeIn 1s ease-in-out;
+        overflow: hidden;
+    }
 
-	h1, h3 {
-		color: #4caf50;
-		margin: 10px 0;
-	}
+    h1, h3 {
+        color: #bb86fc;
+        margin: 10px 0;
+        text-align: center;
+    }
 
-	#score, #fps {
-		margin-top: 20px;
-		font-size: 1.5em;
-		color: #4caf50;
-		font-weight: bold;
-		padding: 10px;
-		border-radius: 8px;
-		background-color: rgba(0, 0, 0, 0.6);
-		box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-		display: none;
-	}
+    h5 {
+        color: #6a737d;
+        margin: 5px 0;
+        font-size: 1em;
+    }
 
-	#warningMessage {
-		color: red;
-		font-weight: bold;
-		background-color: rgba(255, 0, 0, 0.1);
-		border: 2px solid red;
-		border-radius: 8px;
-		padding: 15px;
-		margin-top: 20px;
-		width: 80%;
+    #score, #fps {
+        margin-top: 20px;
+        font-size: 1.5em;
+        color: #bb86fc;
+        font-weight: bold;
+        padding: 10px;
+        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.8);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        animation: slideIn 0.5s ease-in-out;
+        display: none;
+    }
+
+    #warningMessage {
+        color: #ff0266;
+        font-weight: bold;
+        background: rgba(255, 0, 42, 0.1);
+        border: 2px solid #ff0266;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 20px;
+        width: 80%;
+        text-align: center;
+        font-size: 1.1em;
+        animation: slideIn 0.5s ease-in-out;
+    }
+
+    button {
+        padding: 12px 24px;
+        font-size: 1.1em;
+        cursor: pointer;
+        background: #bb86fc;
+        color: #161b22;
+        border: none;
+        border-radius: 8px;
+        transition: background-color 0.3s ease, transform 0.3s ease;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin: 10px;
+    }
+
+    button:hover {
+        background: #e4405f;
+        transform: translateY(-2px);
+    }
+
+    .emergency-stop-button {
+        background: #ff0266;
+        color: #161b22;
+    }
+
+    .emergency-stop-button:hover {
+        background: #ff80ab;
+        transform: translateY(-2px);
+    }
+
+    canvas {
+        display: none;
+        width: 100%;
+        max-width: 600px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        animation: fadeIn 1s ease-in-out;
+    }
+
+    #startButton {
+        margin-bottom: 20px;
+    }
+
+    #exampleScoresButton {
+        margin-top: 20px;
+    }
+
+    #emergencyStopButton {
+        margin-top: 20px;
+        margin-bottom: 20px;
+    }
+
+    #version {
+        margin-top: 40px;
+        font-size: 0.9em;
+        color: #444;
+        animation: fadeIn 1s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideIn {
+        from { transform: translateX(-20px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+	
+	.text-center {
 		text-align: center;
-		font-size: 1.1em;
+		margin-top: 10px;
+		margin-bottom: 20px;
 	}
-
-	button {
-		padding: 10px 20px;
-		font-size: 1.1em;
-		cursor: pointer;
-		background-color: #4caf50;
-		color: white;
-		border: none;
-		border-radius: 5px;
-		transition: background-color 0.3s ease;
-	}
-
-	button:hover {
-		background-color: #45a049;
-	}
-
-	.emergency-stop-button {
-		background-color: red;
-	}
-
-	.emergency-stop-button:hover {
-		background-color: darkred;
-	}
-
-	canvas {
+	
+	#gpuCanvas {
 		display: none;
 		width: 100%;
 		max-width: 600px;
-	}
-
-	#startButton {
-		margin-bottom: 20px;
-	}
-
-	#exampleScoresButton {
+		box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+		animation: fadeIn 1s ease-in-out;
 		margin-top: 20px;
-	}
-
-	#emergencyStopButton {
-		margin-top: 20px;
-		margin-bottom: 20px;
-	}
-
-	#warningMessage + #exampleScoresButton {
-		margin-top: 40px;
-	}
-
-	#space {
-		margin-top: 10px;
-	}
-
-	#version {
-		margin-top: 20px;
-		font-size: 0.9em;
-		color: #aaa;
 	}
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Dill's 3D Benchmark</h1>
-        <h3>Benchmark completes when the FPS drops below 5.</h3>
-        <h3>Results are exponential, a device that scores twice as high is many times more powerful, not just double.</h3>
-        <h5>Make sure to keep the tab in focus and/or device screen awake for the duration of the test.</h5>
+	<div class="container">
+		<h1>Dill's 3D Benchmark</h1>
+		<h3>Benchmark completes when the FPS drops below 5.</h3>
+		<h3>Results are exponential, a device that scores twice as high is many times more powerful, not just double.</h3>
+		
+		<div id="focusWarning" class="text-center">
+			Make sure to keep the tab in focus and/or device screen awake for the duration of the test.
+		</div>
 
-        <canvas id="gpuCanvas" width="600" height="400"></canvas>
+		<div id="warningMessage" style="display: none;">Warning: Make sure the tab is in focus and the screen is awake.</div>
 
-        <div id="score" style="display: none;">Score: N/A</div>
-        <div id="fps" style="display: none;">FPS: N/A</div>
-        <button id="emergencyStopButton" class="emergency-stop-button" style="display: none;" onclick="emergencyStop()">Emergency Stop</button>
+		<canvas id="gpuCanvas" width="600" height="400"></canvas>
 
-        <button id="startButton" onclick="startBenchmark()">Start Benchmark</button>
-        <button id="exampleScoresButton" onclick="window.location.href='https://benchmark.dill.moe/scores'">Leaderboard</button>
+		<div id="score" style="display: none;">Score: N/A</div>
+		<div id="fps" style="display: none;">FPS: N/A</div>
+		<button id="emergencyStopButton" class="emergency-stop-button" style="display: none;" onclick="emergencyStop()">Emergency Stop</button>
 
-        <div id="version">Version: 1.0.4</div>
-    </div>
+		<button id="startButton" onclick="startBenchmark()">Start Benchmark</button>
+		<button id="exampleScoresButton" onclick="showExampleScores()">Leaderboard</button>
+
+		<div id="version">Version: 1.0.4</div>
+	</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"></script>
 <script>

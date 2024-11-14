@@ -5,162 +5,196 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Device Leaderboard</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            overflow-y: auto;
+            background: #0d1117;
+            color: #8b949e;
+            font-family: 'Roboto Mono', monospace;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            position: relative;
+            min-height: 100vh;
+        }
+
+        .container {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
-            height: 100vh;
-            background-color: #121212;
-            margin: 0;
-            color: #eaeaea;
-            padding-top: 20px;
+            width: 90%;
+            max-width: 800px;
+            padding: 40px;
+            background: #161b22;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            position: relative;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            animation: fadeIn 1s ease-in-out;
+            overflow: hidden;
         }
 
-        h1 {
-            color: #4caf50;
-            margin-bottom: 20px;
+        h1, h3 {
+            color: #bb86fc;
+            margin: 10px 0;
+            text-align: center;
+            width: 80%;
         }
 
         table {
-            width: 80%;
-            max-width: 600px;
+            width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            background: #161b22;
         }
 
         th, td {
             padding: 12px;
-            border: 1px solid #555;
             text-align: left;
         }
 
         th {
             background-color: #333;
-            color: #4caf50;
+            color: #bb86fc;
         }
 
         td {
-            color: #eaeaea;
+            color: #8b949e;
+            border-top: 1px solid #555;
         }
 
         .divider {
             background-color: #333;
-            color: #4caf50;
+            color: #bb86fc;
             font-weight: bold;
             text-align: center;
         }
 
         #version {
-            margin-top: 20px;
+            margin-top: 40px;
             font-size: 0.9em;
-            color: #aaa;
-			padding: 20px;
+            color: #444;
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
 <body>
-<h1>Device Leaderboard</h1>
-<h3>Results are exponential, a device that scores twice as high is many times more powerful, not just double.</h3>
-<table>
-    <thead>
-        <tr>
-            <th>Device</th>
-            <th>Browser</th>
-            <th>Score</th>
-	    <th>User</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr class="divider">
-            <td colspan="4">Extreme High End | 42000 and above</td>
-        </tr>
-        <tr>
-            <td>Radeon 7900 XTX + i9-13900K</td>
-            <td>Firefox</td>
-            <td>51620</td>
-	    <td>Ity</td>
-        </tr>
-        <tr>
-            <td>RTX 4090 + Ryzen 7 5800X</td>
-            <td>Firefox</td>
-            <td>49380</td>
-	    <td>Cross</td>
-        </tr>
-        <tr>
-            <td>RTX 3070 + Ryzen 7 5800X3D (Overclocked CPU)</td>
-            <td>Firefox</td>
-            <td>48040</td>
-	    <td>Panni</td>
-        </tr>
-        <tr class="divider">
-            <td colspan="4">High End | 34000 to 41999</td>
-        </tr>
-        <tr>
-            <td>RTX 4060 Ti (16gb ver) + Intel i5 10400</td>
-            <td>Firefox</td>
-            <td>39220</td>
-	    <td>Usagyuun</td>
-        </tr>
-        <tr>
-            <td>MacBook Pro 16" M3 Pro (36GB RAM)</td>
-            <td>Safari</td>
-            <td>39160</td>
-	    <td>Miika</td>
-        </tr>
-        <tr>
-            <td>iPhone 16 Pro Max</td>
-            <td>Safari</td>
-            <td>35320</td>
-	    <td>Miika</td>
-        </tr>
-        <tr class="divider">
-            <td colspan="4">Mid Range | 10000 to 33999</td>
-        </tr>
-        <tr>
-            <td>MacBook Air 15" M2 (16GB RAM)</td>
-            <td>Safari</td>
-            <td>32420</td>
-	    <td>Miika</td>
-        </tr>
-        <tr>
-            <td>iPad 9th gen</td>
-            <td>Safari</td>
-            <td>25480</td>
-	    <td>Miika</td>
-        </tr>
-        <tr>
-            <td>Google Pixel 8a Phone</td>
-            <td>Brave</td>
-            <td>23480</td>
-	    <td>Cross</td>
-        </tr>
-        <tr>
-            <td>Meta Quest 3</td>
-            <td>Quest Browser</td>
-            <td>18560</td>
-	    <td>Usagyuun</td>
-        </tr>
-        <tr class="divider">
-            <td colspan="4">Low End | Below 10000</td>
-        </tr>
-        <tr>
-            <td>itel P55 Phone</td>
-            <td>Firefox</td>
-            <td>9780</td>
-	    <td>Usagyuun</td>
-        </tr>
-        <tr>
-            <td>Samsung Galaxy Core LTE G386W</td>
-            <td>Chrome</td>
-            <td>1700</td>
-	    <td>Usagyuun</td>
-        </tr>
-    </tbody>
-</table>
+    <div class="container">
+        <h1>Device Leaderboard</h1>
+        <h3>Results are exponential, a device that scores twice as high is many times more powerful, not just double.</h3>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Device</th>
+                    <th>Browser</th>
+                    <th>Score</th>
+                    <th>User</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="divider">
+                    <td colspan="4">Extreme High End | 42000 and above</td>
+                </tr>
+                <tr>
+                    <td>Radeon 7900 XTX + i9-13900K</td>
+                    <td>Firefox</td>
+                    <td>51620</td>
+                    <td>Ity</td>
+                </tr>
+                <tr>
+                    <td>RTX 4090 + Ryzen 7 5800X</td>
+                    <td>Firefox</td>
+                    <td>49380</td>
+                    <td>Cross</td>
+                </tr>
+                <tr>
+                    <td>RTX 3070 + Ryzen 7 5800X3D (Overclocked CPU)</td>
+                    <td>Firefox</td>
+                    <td>48040</td>
+                    <td>Panni</td>
+                </tr>
+                <tr class="divider">
+                    <td colspan="4">High End | 34000 to 41999</td>
+                </tr>
+                <tr>
+                    <td>RTX 4060 Ti (16gb ver) + Intel i5 10400</td>
+                    <td>Firefox</td>
+                    <td>39220</td>
+                    <td>Usagyuun</td>
+                </tr>
+                <tr>
+                    <td>MacBook Pro 16" M3 Pro (36GB RAM)</td>
+                    <td>Safari</td>
+                    <td>39160</td>
+                    <td>Miika</td>
+                </tr>
+                <tr>
+                    <td>iPhone 16 Pro Max</td>
+                    <td>Safari</td>
+                    <td>35320</td>
+                    <td>Miika</td>
+                </tr>
+                <tr class="divider">
+                    <td colspan="4">Mid Range | 10000 to 33999</td>
+                </tr>
+                <tr>
+                    <td>MacBook Air 15" M2 (16GB RAM)</td>
+                    <td>Safari</td>
+                    <td>32420</td>
+                    <td>Miika</td>
+                </tr>
+                <tr>
+                    <td>iPad 9th gen</td>
+                    <td>Safari</td>
+                    <td>25480</td>
+                    <td>Miika</td>
+                </tr>
+                <tr>
+                    <td>Google Pixel 8a Phone</td>
+                    <td>Brave</td>
+                    <td>23480</td>
+                    <td>Cross</td>
+                </tr>
+                <tr>
+                    <td>Meta Quest 3</td>
+                    <td>Quest Browser</td>
+                    <td>18560</td>
+                    <td>Usagyuun</td>
+                </tr>
+                <tr class="divider">
+                    <td colspan="4">Low End | Below 10000</td>
+                </tr>
+                <tr>
+                    <td>itel P55 Phone</td>
+                    <td>Firefox</td>
+                    <td>9780</td>
+                    <td>Usagyuun</td>
+                </tr>
+                <tr>
+                    <td>Samsung Galaxy Core LTE G386W</td>
+                    <td>Chrome</td>
+                    <td>1700</td>
+                    <td>Usagyuun</td>
+                </tr>
+            </tbody>
+        </table>
 
-<div id="version">Benchmark Version: 1.0.4</div>
-
+        <div id="version">Benchmark Version: 1.0.4</div>
+    </div>
 </body>
 </html>
