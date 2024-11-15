@@ -31,7 +31,7 @@
             justify-content: flex-start;
             width: 90%;
             max-width: 800px;
-            padding: 40px;
+            padding: 20px;
             background: #161b22;
             border-radius: 15px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -46,11 +46,17 @@
             color: #bb86fc;
             margin: 10px 0;
             text-align: center;
-            width: 80%;
+            width: 100%;
+        }
+
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
         }
 
         table {
             width: 100%;
+            min-width: 320px;
             border-collapse: collapse;
             margin-top: 20px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -61,6 +67,7 @@
             padding: 12px;
             text-align: left;
             border-right: 1px solid #555;
+            white-space: nowrap;
         }
 
         th:last-child, td:last-child {
@@ -115,6 +122,30 @@
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+
+            h1, h3 {
+                font-size: 1.2em;
+            }
+
+            th, td {
+                padding: 10px;
+            }
+
+            table {
+                min-width: 280px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            th, td {
+                font-size: 0.9em;
+            }
+        }
     </style>
 </head>
 <body>
@@ -122,129 +153,131 @@
         <h1>Device Leaderboard</h1>
         <h3>Results are exponential, a device that scores twice as high is many times more powerful, not just double.</h3>
         
-        <table>
-            <thead>
-                <tr>
-                    <th>Device</th>
-		    <th>Type</th>
-                    <th>Browser</th>
-                    <th>Score</th>
-                    <th>User</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr class="divider">
-                    <td colspan="5">Extreme High End | 42000 and above</td>
-                </tr>
-                <tr class="red-category">
-                    <td>🥇 Radeon 7900 XTX + i9 13900K</td>
-                    <td>Gaming PC</td>
-                    <td>Firefox</td>
-                    <td>51620</td>
-                    <td>Ity</td>
-                </tr>
-                <tr class="red-category">
-                    <td>🥈 RTX 4090 (Automatic Tuning) + Ryzen 7 5800X</td>
-                    <td>Gaming PC</td>
-                    <td>Firefox</td>
-                    <td>50840</td>
-                    <td>Cross</td>
-                </tr>
-                <tr class="red-category">
-                    <td>🥉 RTX 3070 + Ryzen 7 5800X3D (Overclocked CPU)</td>
-                    <td>Gaming PC</td>
-                    <td>Firefox</td>
-                    <td>48040</td>
-                    <td>Panni</td>
-                </tr>
-                <tr class="divider">
-                    <td colspan="5">High End | 34000 to 41999</td>
-                </tr>
-                <tr class="green-category">
-                    <td>RTX 4060 Ti (16gb ver) + Intel i5 10400</td>
-                    <td>Gaming PC</td>
-                    <td>Firefox</td>
-                    <td>39220</td>
-                    <td>Usagyuun</td>
-                </tr>
-                <tr class="green-category">
-                    <td>MacBook Pro 16" M3 Pro (36GB RAM)</td>
-                    <td>Laptop</td>
-                    <td>Safari</td>
-                    <td>39160</td>
-                    <td>Miika</td>
-                </tr>
-                <tr class="green-category">
-                    <td>iPhone 16 Pro Max</td>
-                    <td>Phone</td>
-                    <td>Safari</td>
-                    <td>35320</td>
-                    <td>Miika</td>
-                </tr>
-                <tr class="divider">
-                    <td colspan="5">Mid Range | 15000 to 33999</td>
-                </tr>
-                <tr class="yellow-category">
-                    <td>MacBook Air 15" M2 (16GB RAM)</td>
-                    <td>Laptop</td>
-                    <td>Safari</td>
-                    <td>32420</td>
-                    <td>Miika</td>
-                </tr>
-                <tr class="yellow-category">
-                    <td>iPad 9th gen</td>
-                    <td>Tablet</td>
-                    <td>Safari</td>
-                    <td>25480</td>
-                    <td>Miika</td>
-                </tr>
-                <tr class="yellow-category">
-                    <td>Google Pixel 8a</td>
-                    <td>Phone</td>
-                    <td>Brave</td>
-                    <td>23480</td>
-                    <td>Cross</td>
-                </tr>
-                <tr class="yellow-category">
-                    <td>Meta Quest 3</td>
-                    <td>VR Headset</td>
-                    <td>Quest Browser</td>
-                    <td>18560</td>
-                    <td>Usagyuun</td>
-                </tr>
-                <tr class="divider">
-                    <td colspan="5">Low End | Below 15000</td>
-                </tr>
-                <tr class="blue-category">
-                    <td>Xiaomi Redmi 10C</td>
-                    <td>Phone</td>
-                    <td>Chrome</td>
-                    <td>10480</td>
-                    <td>Ritsuki</td>
-                </tr>
-                <tr class="blue-category">
-                    <td>itel P55</td>
-                    <td>Phone</td>
-                    <td>Firefox</td>
-                    <td>9780</td>
-                    <td>Usagyuun</td>
-                </tr>
-                <tr class="blue-category">
-                    <td>Galaxy Tab A8</td>
-                    <td>Tablet</td>
-                    <td>Brave</td>
-                    <td>7840</td>
-                    <td>Cross</td>
-                </tr>
-                <tr class="blue-category">
-                    <td>Samsung Galaxy Core LTE G386W</td>
-                    <td>Phone</td>
-                    <td>Chrome</td>
-                    <td>1700</td>
-                    <td>Usagyuun</td>
-                </tr>
-            </tbody>
-        </table>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Device</th>
+                        <th>Type</th>
+                        <th>Browser</th>
+                        <th>Score</th>
+                        <th>User</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="divider">
+                        <td colspan="5">Extreme High End | 42000 and above</td>
+                    </tr>
+                    <tr class="red-category">
+                        <td>🥇 Radeon 7900 XTX + i9 13900K</td>
+                        <td>Gaming PC</td>
+                        <td>Firefox</td>
+                        <td>51620</td>
+                        <td>Ity</td>
+                    </tr>
+                    <tr class="red-category">
+                        <td>🥈 RTX 4090 (Automatic Tuning) + Ryzen 7 5800X</td>
+                        <td>Gaming PC</td>
+                        <td>Firefox</td>
+                        <td>50840</td>
+                        <td>Cross</td>
+                    </tr>
+                    <tr class="red-category">
+                        <td>🥉 RTX 3070 + Ryzen 7 5800X3D (Overclocked CPU)</td>
+                        <td>Gaming PC</td>
+                        <td>Firefox</td>
+                        <td>48040</td>
+                        <td>Panni</td>
+                    </tr>
+                    <tr class="divider">
+                        <td colspan="5">High End | 34000 to 41999</td>
+                    </tr>
+                    <tr class="green-category">
+                        <td>RTX 4060 Ti (16gb ver) + Intel i5 10400</td>
+                        <td>Gaming PC</td>
+                        <td>Firefox</td>
+                        <td>39220</td>
+                        <td>Usagyuun</td>
+                    </tr>
+                    <tr class="green-category">
+                        <td>MacBook Pro 16" M3 Pro (36GB RAM)</td>
+                        <td>Laptop</td>
+                        <td>Safari</td>
+                        <td>39160</td>
+                        <td>Miika</td>
+                    </tr>
+                    <tr class="green-category">
+                        <td>iPhone 16 Pro Max</td>
+                        <td>Phone</td>
+                        <td>Safari</td>
+                        <td>35320</td>
+                        <td>Miika</td>
+                    </tr>
+                    <tr class="divider">
+                        <td colspan="5">Mid Range | 15000 to 33999</td>
+                    </tr>
+                    <tr class="yellow-category">
+                        <td>MacBook Air 15" M2 (16GB RAM)</td>
+                        <td>Laptop</td>
+                        <td>Safari</td>
+                        <td>32420</td>
+                        <td>Miika</td>
+                    </tr>
+                    <tr class="yellow-category">
+                        <td>iPad 9th gen</td>
+                        <td>Tablet</td>
+                        <td>Safari</td>
+                        <td>25480</td>
+                        <td>Miika</td>
+                    </tr>
+                    <tr class="yellow-category">
+                        <td>Google Pixel 8a</td>
+                        <td>Phone</td>
+                        <td>Brave</td>
+                        <td>23480</td>
+                        <td>Cross</td>
+                    </tr>
+                    <tr class="yellow-category">
+                        <td>Meta Quest 3</td>
+                        <td>VR Headset</td>
+                        <td>Quest Browser</td>
+                        <td>18560</td>
+                        <td>Usagyuun</td>
+                    </tr>
+                    <tr class="divider">
+                        <td colspan="5">Low End | Below 15000</td>
+                    </tr>
+                    <tr class="blue-category">
+                        <td>Xiaomi Redmi 10C</td>
+                        <td>Phone</td>
+                        <td>Chrome</td>
+                        <td>10480</td>
+                        <td>Ritsuki</td>
+                    </tr>
+                    <tr class="blue-category">
+                        <td>itel P55</td>
+                        <td>Phone</td>
+                        <td>Firefox</td>
+                        <td>9780</td>
+                        <td>Usagyuun</td>
+                    </tr>
+                    <tr class="blue-category">
+                        <td>Galaxy Tab A8</td>
+                        <td>Tablet</td>
+                        <td>Brave</td>
+                        <td>7840</td>
+                        <td>Cross</td>
+                    </tr>
+                    <tr class="blue-category">
+                        <td>Samsung Galaxy Core LTE G386W</td>
+                        <td>Phone</td>
+                        <td>Chrome</td>
+                        <td>1700</td>
+                        <td>Usagyuun</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
         <div id="version">Benchmark Version: 1.0.4</div>
     </div>
 </body>
